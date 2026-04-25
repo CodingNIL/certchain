@@ -6,14 +6,13 @@ exports.uploadCertificate = async (req, res) => {
 
   const fileBuffer = req.file.buffer;
 
-  // Generate hash from file
   const hash = generateHash(fileBuffer);
 
   const cert = await Certificate.create({
     studentName,
     course,
     issueDate: new Date(),
-    fileUrl: "temp-storage", // IPFS later
+    fileUrl: "temp-storage", 
     hash
   });
 
