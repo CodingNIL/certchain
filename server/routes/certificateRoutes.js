@@ -7,25 +7,20 @@ const authMiddleware = require("../middleware/authMiddleware");
 const {
   uploadCertificate,
   verifyCertificate,
-  getBlocks
+  getBlocks,
+  validateBlockchain
 } = require("../controllers/certificateController");
 
-// 🔼 upload certificate
-router.post(
-  "/upload",
-  authMiddleware,
-  upload.single("file"),
-  uploadCertificate
-);
+// upload
+router.post("/upload", authMiddleware, upload.single("file"), uploadCertificate);
 
-// 🔍 verify certificate
-router.post(
-  "/verify",
-  upload.single("file"),
-  verifyCertificate
-);
+// verify
+router.post("/verify", upload.single("file"), verifyCertificate);
 
-// 📦 blockchain
+// blocks
 router.get("/blocks", getBlocks);
+
+// 🔥 blockchain validation engine
+router.get("/validate-chain", validateBlockchain);
 
 module.exports = router;

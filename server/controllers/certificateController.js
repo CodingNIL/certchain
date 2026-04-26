@@ -1,6 +1,7 @@
 const Certificate = require("../models/Certificate");
 const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
+const { validateChain } = require("../services/blockchainValidator");
 
 // 🔼 UPLOAD + BLOCKCHAIN
 const uploadCertificate = async (req, res) => {
@@ -14,13 +15,11 @@ const uploadCertificate = async (req, res) => {
     }
 
     if (!req.user?.id) {
-      return res.status(401).json({ msg: "Unauthorized user" });
+      return res.status(401).json({ msg: "Unauthorized" });
     }
 
-    // 🔐 generate certificate hash
     const hash = generateHash(req.file.buffer);
 
-    // 💾 save certificate
     const cert = await Certificate.create({
       userId: req.user.id,
       studentName,
@@ -30,14 +29,12 @@ const uploadCertificate = async (req, res) => {
       hash
     });
 
-    console.log("CERT SAVED ✔:", cert._id);
+    console.log("CERT SAVED ✔");
 
-    // 🔗 get last block using timestamp (FIXED)
     const lastBlock = await Block.findOne().sort({ timestamp: -1 });
 
     const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
 
-    // 📦 block data
     const blockData = {
       studentName,
       course,
@@ -45,19 +42,17 @@ const uploadCertificate = async (req, res) => {
       certId: cert._id
     };
 
-    // 🔐 generate block hash
     const blockHash = generateHash(
       JSON.stringify(blockData) + previousHash
     );
 
-    // 💾 SAVE BLOCK (FIXED + SAFE)
     const newBlock = await Block.create({
       data: blockData,
       hash: blockHash,
       previousHash
     });
 
-    console.log("BLOCK SAVED ✔:", newBlock._id);
+    console.log("BLOCK SAVED ✔");
 
     return res.json({
       msg: "Certificate + Block created 🔥",
@@ -74,7 +69,7 @@ const uploadCertificate = async (req, res) => {
   }
 };
 
-// 🔍 VERIFY CERTIFICATE
+// 🔍 VERIFY
 const verifyCertificate = async (req, res) => {
   try {
     if (!req.file) {
@@ -86,10 +81,7 @@ const verifyCertificate = async (req, res) => {
     const cert = await Certificate.findOne({ hash });
 
     if (!cert) {
-      return res.json({
-        valid: false,
-        msg: "Invalid ❌"
-      });
+      return res.json({ valid: false, msg: "Invalid ❌" });
     }
 
     return res.json({
@@ -99,28 +91,39 @@ const verifyCertificate = async (req, res) => {
     });
 
   } catch (error) {
-    console.log("VERIFY ERROR:", error);
+    console.log(error);
     return res.status(500).json({ msg: "Verify error" });
   }
 };
 
-// 📦 GET BLOCKCHAIN
+// 📦 GET BLOCKS
 const getBlocks = async (req, res) => {
   try {
     const blocks = await Block.find().sort({ timestamp: 1 });
 
-    console.log("BLOCKS FETCHED ✔:", blocks.length);
-
     return res.json(blocks);
-
   } catch (error) {
-    console.log("GET BLOCKS ERROR:", error);
     return res.status(500).json({ msg: "Error fetching blocks" });
+  }
+};
+
+// 🔐 BLOCKCHAIN VALIDATION ENGINE
+const validateBlockchain = async (req, res) => {
+  try {
+    const result = await validateChain();
+    return res.json(result);
+  } catch (error) {
+    return res.status(500).json({
+      valid: false,
+      message: "Validation failed",
+      error: error.message
+    });
   }
 };
 
 module.exports = {
   uploadCertificate,
   verifyCertificate,
-  getBlocks
+  getBlocks,
+  validateBlockchain
 };
