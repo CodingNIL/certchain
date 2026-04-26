@@ -10,7 +10,7 @@ const {
   getBlocks
 } = require("../controllers/certificateController");
 
-// upload
+// 🔼 upload certificate
 router.post(
   "/upload",
   authMiddleware,
@@ -18,14 +18,14 @@ router.post(
   uploadCertificate
 );
 
-// verify
+// 🔍 verify certificate
 router.post(
   "/verify",
   upload.single("file"),
   verifyCertificate
 );
 
-// get blockchain
+// 📦 blockchain
 router.get("/blocks", getBlocks);
 
 module.exports = router;

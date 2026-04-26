@@ -1,9 +1,18 @@
 const mongoose = require("mongoose");
 
 const blockSchema = new mongoose.Schema({
-  data: Object,
-  hash: String,
-  previousHash: String,
+  data: {
+    type: Object,
+    required: true
+  },
+  hash: {
+    type: String,
+    required: true
+  },
+  previousHash: {
+    type: String,
+    required: true
+  },
   timestamp: {
     type: Date,
     default: Date.now
