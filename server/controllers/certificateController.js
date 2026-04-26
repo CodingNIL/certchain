@@ -2,9 +2,11 @@ const Certificate = require("../models/Certificate");
 const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
 
-// 🔼 UPLOAD CERTIFICATE + BLOCKCHAIN
+// 🔼 UPLOAD + BLOCKCHAIN
 const uploadCertificate = async (req, res) => {
   try {
+    console.log("UPLOAD HIT");
+
     const { studentName, course } = req.body;
 
     if (!req.file) {
@@ -15,7 +17,7 @@ const uploadCertificate = async (req, res) => {
 
     // save certificate
     const cert = await Certificate.create({
-      userId: req.user.id,
+      userId: req.user?.id,
       studentName,
       course,
       issueDate: new Date(),
@@ -23,8 +25,9 @@ const uploadCertificate = async (req, res) => {
       hash
     });
 
-    // 🔥 BLOCKCHAIN
+    console.log("CERT SAVED");
 
+    // 🔥 FIND LAST BLOCK
     const lastBlock = await Block.findOne().sort({ _id: -1 });
 
     const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
@@ -39,21 +42,26 @@ const uploadCertificate = async (req, res) => {
       JSON.stringify(blockData) + previousHash
     );
 
-    await Block.create({
+    // 🔥 SAVE BLOCK (IMPORTANT FIX)
+    const newBlock = await Block.create({
       data: blockData,
       hash: blockHash,
       previousHash
     });
 
+    console.log("BLOCK CREATED:", newBlock);
+
     res.json({
-      msg: "Certificate uploaded + block created 🔥",
+      msg: "Certificate + Block created 🔥",
       certificate: cert,
-      blockHash
+      block: newBlock
     });
 
   } catch (error) {
+    console.log("ERROR:", error.message);
+
     res.status(500).json({
-      msg: "Error uploading",
+      msg: "Upload failed",
       error: error.message
     });
   }
@@ -84,7 +92,7 @@ const verifyCertificate = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ msg: "Error verifying" });
+    res.status(500).json({ msg: "Verify error" });
   }
 };
 
@@ -92,6 +100,9 @@ const verifyCertificate = async (req, res) => {
 const getBlocks = async (req, res) => {
   try {
     const blocks = await Block.find().sort({ _id: 1 });
+
+    console.log("BLOCKS FETCHED:", blocks.length);
+
     res.json(blocks);
   } catch (error) {
     res.status(500).json({ msg: "Error fetching blocks" });
