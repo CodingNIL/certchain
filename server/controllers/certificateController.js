@@ -1,22 +1,24 @@
 const Certificate = require("../models/Certificate");
+const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
 
-// 🔼 UPLOAD CERTIFICATE
+// 🔼 UPLOAD CERTIFICATE + ADD TO BLOCKCHAIN
 const uploadCertificate = async (req, res) => {
   try {
     const { studentName, course } = req.body;
 
-    // ✅ prevent crash
     if (!req.file) {
       return res.status(400).json({ msg: "File not uploaded" });
     }
 
     const fileBuffer = req.file.buffer;
 
+    // 🔥 Certificate hash
     const hash = generateHash(fileBuffer);
 
+    // ✅ Save certificate
     const cert = await Certificate.create({
-      userId: req.user.id, // 🔐 from middleware
+      userId: req.user.id,
       studentName,
       course,
       issueDate: new Date(),
@@ -24,7 +26,35 @@ const uploadCertificate = async (req, res) => {
       hash
     });
 
-    res.json(cert);
+    // 🔥 BLOCKCHAIN LOGIC STARTS
+
+    // find last block
+    const lastBlock = await Block.findOne().sort({ _id: -1 });
+
+    const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
+
+    const blockData = {
+      studentName,
+      course,
+      certHash: hash
+    };
+
+    const blockHash = generateHash(
+      JSON.stringify(blockData) + previousHash
+    );
+
+    // save block
+    await Block.create({
+      data: blockData,
+      hash: blockHash,
+      previousHash
+    });
+
+    res.json({
+      msg: "Certificate uploaded & added to blockchain 🔥",
+      certificate: cert,
+      blockHash
+    });
 
   } catch (error) {
     res.status(500).json({
@@ -41,9 +71,7 @@ const verifyCertificate = async (req, res) => {
       return res.status(400).json({ msg: "File not uploaded" });
     }
 
-    const fileBuffer = req.file.buffer;
-
-    const hash = generateHash(fileBuffer);
+    const hash = generateHash(req.file.buffer);
 
     const cert = await Certificate.findOne({ hash });
 
