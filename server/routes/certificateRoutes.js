@@ -6,10 +6,11 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const {
   uploadCertificate,
-  verifyCertificate
+  verifyCertificate,
+  getBlocks
 } = require("../controllers/certificateController");
 
-// 🔐 Upload (protected)
+// upload
 router.post(
   "/upload",
   authMiddleware,
@@ -17,11 +18,14 @@ router.post(
   uploadCertificate
 );
 
-// 🔍 Verify (public)
+// verify
 router.post(
   "/verify",
   upload.single("file"),
   verifyCertificate
 );
+
+// get blockchain
+router.get("/blocks", getBlocks);
 
 module.exports = router;

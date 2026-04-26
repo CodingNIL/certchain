@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const blockSchema = new mongoose.Schema({
-  data: Object, // certificate data
+  data: Object,
   hash: String,
   previousHash: String,
   timestamp: {

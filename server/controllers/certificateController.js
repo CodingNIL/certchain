@@ -2,7 +2,7 @@ const Certificate = require("../models/Certificate");
 const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
 
-// 🔼 UPLOAD CERTIFICATE + ADD TO BLOCKCHAIN
+// 🔼 UPLOAD CERTIFICATE + BLOCKCHAIN
 const uploadCertificate = async (req, res) => {
   try {
     const { studentName, course } = req.body;
@@ -11,12 +11,9 @@ const uploadCertificate = async (req, res) => {
       return res.status(400).json({ msg: "File not uploaded" });
     }
 
-    const fileBuffer = req.file.buffer;
+    const hash = generateHash(req.file.buffer);
 
-    // 🔥 Certificate hash
-    const hash = generateHash(fileBuffer);
-
-    // ✅ Save certificate
+    // save certificate
     const cert = await Certificate.create({
       userId: req.user.id,
       studentName,
@@ -26,9 +23,8 @@ const uploadCertificate = async (req, res) => {
       hash
     });
 
-    // 🔥 BLOCKCHAIN LOGIC STARTS
+    // 🔥 BLOCKCHAIN
 
-    // find last block
     const lastBlock = await Block.findOne().sort({ _id: -1 });
 
     const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
@@ -43,7 +39,6 @@ const uploadCertificate = async (req, res) => {
       JSON.stringify(blockData) + previousHash
     );
 
-    // save block
     await Block.create({
       data: blockData,
       hash: blockHash,
@@ -51,20 +46,20 @@ const uploadCertificate = async (req, res) => {
     });
 
     res.json({
-      msg: "Certificate uploaded & added to blockchain 🔥",
+      msg: "Certificate uploaded + block created 🔥",
       certificate: cert,
       blockHash
     });
 
   } catch (error) {
     res.status(500).json({
-      msg: "Error uploading certificate",
+      msg: "Error uploading",
       error: error.message
     });
   }
 };
 
-// 🔍 VERIFY CERTIFICATE
+// 🔍 VERIFY
 const verifyCertificate = async (req, res) => {
   try {
     if (!req.file) {
@@ -78,25 +73,33 @@ const verifyCertificate = async (req, res) => {
     if (!cert) {
       return res.json({
         valid: false,
-        msg: "Certificate is NOT valid ❌"
+        msg: "Invalid ❌"
       });
     }
 
     res.json({
       valid: true,
-      msg: "Certificate is VALID ✅",
+      msg: "Valid ✅",
       certificate: cert
     });
 
   } catch (error) {
-    res.status(500).json({
-      msg: "Error verifying certificate",
-      error: error.message
-    });
+    res.status(500).json({ msg: "Error verifying" });
+  }
+};
+
+// 📦 GET BLOCKS
+const getBlocks = async (req, res) => {
+  try {
+    const blocks = await Block.find().sort({ _id: 1 });
+    res.json(blocks);
+  } catch (error) {
+    res.status(500).json({ msg: "Error fetching blocks" });
   }
 };
 
 module.exports = {
   uploadCertificate,
-  verifyCertificate
+  verifyCertificate,
+  getBlocks
 };
