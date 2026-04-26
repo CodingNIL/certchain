@@ -28,3 +28,12 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on ${PORT}`));
 
 console.log("ENV TEST:", process.env.MONGO_URI);
+
+const authMiddleware = require("./middleware/authMiddleware");
+
+app.get("/api/protected", authMiddleware, (req, res) => {
+  res.json({
+    msg: "Access granted 🔐",
+    user: req.user
+  });
+});
