@@ -2,25 +2,21 @@ const Certificate = require("../models/Certificate");
 const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
 const { validateChain } = require("../services/blockchainValidator");
-const { getMerkleRoot } = require("../services/merkleService");
+const {
+  getMerkleRoot,
+  getMerkleProof,
+  verifyMerkleProof
+} = require("../services/merkleService");
 const QRCode = require("qrcode");
 
-// 🔼 UPLOAD + MERKLE + BLOCKCHAIN + QR
+// 🔼 UPLOAD
 const uploadCertificate = async (req, res) => {
   try {
-    console.log("UPLOAD HIT");
-
     const { studentName, course } = req.body;
 
-    if (!req.file) {
-      return res.status(400).json({ msg: "File not uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ msg: "File not uploaded" });
+    if (!req.user?.id) return res.status(401).json({ msg: "Unauthorized" });
 
-    if (!req.user?.id) {
-      return res.status(401).json({ msg: "Unauthorized" });
-    }
-
-    // 🔐 hash certificate
     const hash = generateHash(req.file.buffer);
 
     const cert = await Certificate.create({
@@ -32,19 +28,13 @@ const uploadCertificate = async (req, res) => {
       hash
     });
 
-    console.log("CERT SAVED ✔");
-
-    // 🔗 blockchain previous block
     const lastBlock = await Block.findOne().sort({ timestamp: -1 });
     const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
 
-    // 🌳 MERKLE TREE
     const allCerts = await Certificate.find().select("hash");
     const hashes = allCerts.map(c => c.hash);
 
     const merkleRoot = getMerkleRoot(hashes);
-
-    // 🔐 block hash
     const blockHash = generateHash(merkleRoot + previousHash);
 
     const newBlock = await Block.create({
@@ -53,15 +43,10 @@ const uploadCertificate = async (req, res) => {
       previousHash
     });
 
-    console.log("BLOCK SAVED ✔");
-
-    // 📱 QR
     const verifyUrl = `http://localhost:5000/api/cert/verify/${cert._id}`;
     const qrCode = await QRCode.toDataURL(verifyUrl);
 
-    console.log("QR GENERATED ✔");
-
-    return res.json({
+    res.json({
       msg: "Certificate + Merkle Block + QR created 🔥",
       certificate: cert,
       block: newBlock,
@@ -69,47 +54,32 @@ const uploadCertificate = async (req, res) => {
       verifyUrl
     });
 
-  } catch (error) {
-    console.log("ERROR:", error);
-    return res.status(500).json({
-      msg: "Upload failed",
-      error: error.message
-    });
+  } catch (err) {
+    res.status(500).json({ msg: "Upload failed", error: err.message });
   }
 };
 
-// 🔍 VERIFY BY FILE
+// 🔍 VERIFY FILE
 const verifyCertificate = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ msg: "File not uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ msg: "File not uploaded" });
 
     const hash = generateHash(req.file.buffer);
-
     const cert = await Certificate.findOne({ hash });
 
-    if (!cert) {
-      return res.json({ valid: false, msg: "Invalid ❌" });
-    }
+    if (!cert) return res.json({ valid: false, msg: "Invalid ❌" });
 
-    return res.json({
-      valid: true,
-      msg: "Valid ✅",
-      certificate: cert
-    });
+    res.json({ valid: true, msg: "Valid ✅", certificate: cert });
 
-  } catch (error) {
-    return res.status(500).json({ msg: "Verify error" });
+  } catch {
+    res.status(500).json({ msg: "Verify error" });
   }
 };
 
-// 📱 VERIFY BY ID (QR)
+// 📱 VERIFY QR
 const verifyById = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const cert = await Certificate.findById(id);
+    const cert = await Certificate.findById(req.params.id);
 
     if (!cert) {
       return res.status(404).json({
@@ -118,38 +88,57 @@ const verifyById = async (req, res) => {
       });
     }
 
-    return res.json({
+    res.json({
       valid: true,
       msg: "Certificate is valid ✅",
       certificate: cert
     });
 
-  } catch (error) {
-    return res.status(500).json({ msg: "Error verifying certificate" });
+  } catch {
+    res.status(500).json({ msg: "Error verifying" });
   }
 };
 
-// 📦 GET BLOCKS
+// 📦 BLOCKS
 const getBlocks = async (req, res) => {
-  try {
-    const blocks = await Block.find().sort({ timestamp: 1 });
-    return res.json(blocks);
-  } catch (error) {
-    return res.status(500).json({ msg: "Error fetching blocks" });
-  }
+  const blocks = await Block.find().sort({ timestamp: 1 });
+  res.json(blocks);
 };
 
-// 🔐 VALIDATE CHAIN
+// 🔐 VALIDATE
 const validateBlockchain = async (req, res) => {
-  try {
-    const result = await validateChain();
-    return res.json(result);
-  } catch (error) {
-    return res.status(500).json({
-      valid: false,
-      message: "Validation failed"
-    });
-  }
+  const result = await validateChain();
+  res.json(result);
+};
+
+// 🌳 GENERATE PROOF
+const generateProof = async (req, res) => {
+  const cert = await Certificate.findById(req.params.id);
+  if (!cert) return res.status(404).json({ msg: "Not found" });
+
+  const allCerts = await Certificate.find().select("hash");
+  const hashes = allCerts.map(c => c.hash);
+
+  const proof = getMerkleProof(hashes, cert.hash);
+  const latestBlock = await Block.findOne().sort({ timestamp: -1 });
+
+  res.json({
+    certHash: cert.hash,
+    proof,
+    merkleRoot: latestBlock.merkleRoot
+  });
+};
+
+// 🔐 VERIFY PROOF
+const verifyProof = async (req, res) => {
+  const { certHash, proof, merkleRoot } = req.body;
+
+  const valid = verifyMerkleProof(certHash, proof, merkleRoot);
+
+  res.json({
+    valid,
+    msg: valid ? "Proof valid ✅" : "Proof invalid ❌"
+  });
 };
 
 module.exports = {
@@ -157,5 +146,7 @@ module.exports = {
   verifyCertificate,
   verifyById,
   getBlocks,
-  validateBlockchain
+  validateBlockchain,
+  generateProof,
+  verifyProof
 };

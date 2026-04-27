@@ -14,29 +14,24 @@ const validateChain = async () => {
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i];
 
-    // 🔐 recompute hash
     const recalculatedHash = generateHash(
-      JSON.stringify(block.data) + block.previousHash
+      block.merkleRoot + block.previousHash
     );
 
-    // ❌ check tampering
     if (block.hash !== recalculatedHash) {
       return {
         valid: false,
-        message: `Tampering detected at block ${i}`,
-        error: "Hash mismatch"
+        message: `Tampering detected at block ${i}`
       };
     }
 
-    // 🔗 check chain link
     if (i > 0) {
       const prevBlock = blocks[i - 1];
 
       if (block.previousHash !== prevBlock.hash) {
         return {
           valid: false,
-          message: `Chain broken at block ${i}`,
-          error: "PreviousHash mismatch"
+          message: `Chain broken at block ${i}`
         };
       }
     }
