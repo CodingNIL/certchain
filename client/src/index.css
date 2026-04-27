@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GLOBAL BACKGROUND */
+body {
+  background-color: #0b1220;
+  font-family: ui-sans-serif, system-ui;
+}
+
+/* smooth transitions */
+* {
+  transition: all 0.2s ease-in-out;
+}
