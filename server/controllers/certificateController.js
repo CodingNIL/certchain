@@ -2,8 +2,9 @@ const Certificate = require("../models/Certificate");
 const Block = require("../models/Block");
 const { generateHash } = require("../services/hashService");
 const { validateChain } = require("../services/blockchainValidator");
+const QRCode = require("qrcode"); // ✅ NEW
 
-// 🔼 UPLOAD + BLOCKCHAIN
+// 🔼 UPLOAD + BLOCKCHAIN + QR
 const uploadCertificate = async (req, res) => {
   try {
     console.log("UPLOAD HIT");
@@ -31,8 +32,8 @@ const uploadCertificate = async (req, res) => {
 
     console.log("CERT SAVED ✔");
 
+    // 🔗 BLOCKCHAIN
     const lastBlock = await Block.findOne().sort({ timestamp: -1 });
-
     const previousHash = lastBlock ? lastBlock.hash : "GENESIS";
 
     const blockData = {
@@ -54,10 +55,19 @@ const uploadCertificate = async (req, res) => {
 
     console.log("BLOCK SAVED ✔");
 
+    // 📱 QR GENERATION (NEW 🔥)
+    const verifyUrl = `http://localhost:5000/api/cert/verify/${cert._id}`;
+
+    const qrCode = await QRCode.toDataURL(verifyUrl);
+
+    console.log("QR GENERATED ✔");
+
     return res.json({
-      msg: "Certificate + Block created 🔥",
+      msg: "Certificate + Block + QR created 🔥",
       certificate: cert,
-      block: newBlock
+      block: newBlock,
+      qrCode: qrCode,
+      verifyUrl: verifyUrl
     });
 
   } catch (error) {
@@ -69,7 +79,7 @@ const uploadCertificate = async (req, res) => {
   }
 };
 
-// 🔍 VERIFY
+// 🔍 VERIFY BY FILE
 const verifyCertificate = async (req, res) => {
   try {
     if (!req.file) {
@@ -91,8 +101,32 @@ const verifyCertificate = async (req, res) => {
     });
 
   } catch (error) {
-    console.log(error);
     return res.status(500).json({ msg: "Verify error" });
+  }
+};
+
+// 📱 VERIFY BY ID (QR USES THIS)
+const verifyById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const cert = await Certificate.findById(id);
+
+    if (!cert) {
+      return res.status(404).json({
+        valid: false,
+        msg: "Certificate not found ❌"
+      });
+    }
+
+    return res.json({
+      valid: true,
+      msg: "Certificate is valid ✅",
+      certificate: cert
+    });
+
+  } catch (error) {
+    return res.status(500).json({ msg: "Error verifying certificate" });
   }
 };
 
@@ -100,14 +134,13 @@ const verifyCertificate = async (req, res) => {
 const getBlocks = async (req, res) => {
   try {
     const blocks = await Block.find().sort({ timestamp: 1 });
-
     return res.json(blocks);
   } catch (error) {
     return res.status(500).json({ msg: "Error fetching blocks" });
   }
 };
 
-// 🔐 BLOCKCHAIN VALIDATION ENGINE
+// 🔐 BLOCKCHAIN VALIDATION
 const validateBlockchain = async (req, res) => {
   try {
     const result = await validateChain();
@@ -124,6 +157,7 @@ const validateBlockchain = async (req, res) => {
 module.exports = {
   uploadCertificate,
   verifyCertificate,
+  verifyById, // ✅ NEW
   getBlocks,
   validateBlockchain
 };
