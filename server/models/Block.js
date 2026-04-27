@@ -1,8 +1,8 @@
 const mongoose = require("mongoose");
 
 const blockSchema = new mongoose.Schema({
-  data: {
-    type: Object,
+  merkleRoot: {
+    type: String,
     required: true
   },
   hash: {
