@@ -12,19 +12,10 @@ const {
   validateBlockchain
 } = require("../controllers/certificateController");
 
-// 🔼 upload
 router.post("/upload", authMiddleware, upload.single("file"), uploadCertificate);
-
-// 🔍 verify via file
 router.post("/verify", upload.single("file"), verifyCertificate);
-
-// 📱 verify via QR
 router.get("/verify/:id", verifyById);
-
-// 📦 blockchain
 router.get("/blocks", getBlocks);
-
-// 🔐 validate chain
 router.get("/validate-chain", validateBlockchain);
 
 module.exports = router;
