@@ -9,6 +9,7 @@ const Scanner = () => {
 
   useEffect(() => {
     let scanner;
+    let isProcessing = false; // ✅ prevents multiple scans
 
     const startScanner = async () => {
       try {
@@ -18,36 +19,49 @@ const Scanner = () => {
           { facingMode: "environment" },
           {
             fps: 10,
-            qrbox: 250
+            qrbox: 250,
           },
           async (decodedText) => {
+            if (isProcessing) return; // ✅ block duplicate scans
+            isProcessing = true;
+
             try {
+              setError("");
+              setResult(null);
+
+              // ✅ safer: QR should directly contain ID
               const id = decodedText.split("/").pop();
 
               const res = await API.get(`/cert/verify/${id}`);
+
               setResult(res.data);
 
-              await scanner.stop(); // stop after scan
+              await scanner.stop();
             } catch (err) {
+              console.error(err);
+              setResult(null);
               setError("Verification failed");
+            } finally {
+              isProcessing = false;
             }
           }
         );
 
         setStarted(true);
       } catch (err) {
-        console.log(err);
+        console.error(err);
         setError("Camera not supported or permission denied");
       }
     };
 
-    // small delay ensures DOM is ready
     const timer = setTimeout(startScanner, 500);
 
     return () => {
       clearTimeout(timer);
-      if (scanner && scanner.isScanning) {
+
+      if (scanner) {
         scanner.stop().catch(() => {});
+        scanner.clear().catch(() => {});
       }
     };
   }, []);
@@ -84,10 +98,12 @@ const Scanner = () => {
             <h2 className={`text-lg ${
               result.valid ? "text-green-400" : "text-red-400"
             }`}>
-              {result.valid ? "✅ Valid Certificate" : "❌ Invalid"}
+              {result.valid
+                ? "✅ Valid Certificate"
+                : "❌ Invalid Certificate"}
             </h2>
 
-            {result.certificate && (
+            {result.valid && result.certificate && (
               <div className="text-sm mt-2">
                 <p>{result.certificate.studentName}</p>
                 <p>{result.certificate.course}</p>
