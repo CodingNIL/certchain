@@ -1,33 +1,49 @@
-import { Link, useLocation } from "react-router-dom";
+import {
+  Link,
+  useNavigate
+} from "react-router-dom";
 
-const Navbar = () => {
-  const location = useLocation();
+const Navbar = ({ setIsAuth }) => {
 
-  const linkStyle = (path) =>
-    `px-4 py-2 rounded-xl text-sm ${
-      location.pathname === path
-        ? "bg-blue-500 text-white shadow-lg"
-        : "text-gray-300 hover:bg-white/10"
-    }`;
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+
+    localStorage.removeItem("token");
+
+    setIsAuth(false);
+
+    navigate("/login");
+  };
 
   return (
-    <div className="glass mx-4 mt-4 px-6 py-3 flex justify-between items-center">
+    <nav className="flex justify-between items-center px-6 py-4 bg-gray-900 text-white">
 
-      <h1 className="text-xl font-bold text-blue-400">
+      <h1 className="text-xl font-bold">
         CertChain 🔐
       </h1>
 
-      <div className="flex gap-2">
+      <div className="flex gap-6">
 
-        <Link to="/" className={linkStyle("/")}>Upload</Link>
-        <Link to="/verify" className={linkStyle("/verify")}>Verify</Link>
-        <Link to="/blockchain" className={linkStyle("/blockchain")}>Chain</Link>
-        <Link to="/merkle" className={linkStyle("/merkle")}>Merkle</Link>
-        <Link to="/scanner" className={linkStyle("/scanner")}>Scan</Link>
+        <Link to="/upload">Upload</Link>
+
+        <Link to="/verify">Verify</Link>
+
+        <Link to="/blockchain">Blocks</Link>
+
+        <Link to="/merkle">Merkle</Link>
+
+        <Link to="/scanner">QR Scanner</Link>
+
+        <button
+          onClick={handleLogout}
+          className="bg-red-600 px-3 py-1 rounded"
+        >
+          Logout
+        </button>
 
       </div>
-
-    </div>
+    </nav>
   );
 };
 

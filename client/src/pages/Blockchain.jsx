@@ -2,90 +2,115 @@ import { useEffect, useState } from "react";
 import { API } from "../api/api";
 
 const Blockchain = () => {
+
   const [blocks, setBlocks] = useState([]);
 
   useEffect(() => {
+
     const fetchBlocks = async () => {
+
       try {
+
         const res = await API.get("/cert/blocks");
-        setBlocks(res.data || []);
+
+        setBlocks(res.data);
+
       } catch (err) {
+
         console.log(err);
+
       }
     };
 
     fetchBlocks();
+
   }, []);
 
   return (
-    <div className="min-h-screen flex justify-center px-4 py-10">
+    <div className="min-h-screen bg-gray-900 text-white p-6">
 
-      <div className="glass w-full max-w-3xl p-6">
+      <h1 className="text-4xl font-bold mb-8 text-center">
+        Blockchain Explorer ⛓️
+      </h1>
 
-        <h1 className="text-2xl font-bold text-center text-blue-400 mb-8">
-          Blockchain Ledger 🔗
-        </h1>
+      <div className="max-w-5xl mx-auto">
 
         {blocks.length === 0 ? (
+
           <p className="text-center text-gray-400">
-            No blocks in chain
+            No blocks found
           </p>
+
         ) : (
-          <div className="flex flex-col gap-6">
 
-            {blocks.map((block, index) => (
-              <div key={index} className="relative">
+          blocks.map((block, index) => (
 
-                {/* connection line */}
-                {index !== 0 && (
-                  <div className="absolute left-5 -top-6 w-0.5 h-6 bg-blue-500" />
-                )}
+            <div
+              key={block._id}
+              className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6 border border-gray-700"
+            >
 
-                {/* node dot */}
-                <div className="absolute left-3 top-6 w-4 h-4 bg-blue-500 rounded-full shadow-lg" />
+              {/* BLOCK TITLE */}
+              <h2 className="text-2xl font-bold text-white mb-4">
+                Block #{index}
+              </h2>
 
-                {/* block card */}
-                <div className="ml-10 glass p-4">
+              {/* TIMESTAMP */}
+              <p className="text-gray-400 mb-6">
+                {new Date(block.timestamp).toLocaleString()}
+              </p>
 
-                  <div className="flex justify-between items-center mb-2">
-                    <h2 className="text-sm font-bold text-blue-300">
-                      Block #{index}
-                    </h2>
+              {/* HASH */}
+              <div className="mb-5">
 
-                    <span className="text-xs text-gray-400">
-                      {new Date(block.timestamp).toLocaleString()}
-                    </span>
-                  </div>
+                <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">
+                  Hash
+                </h3>
 
-                  <div className="text-xs break-all space-y-2">
+                <p className="text-green-400 break-all text-sm">
+                  {block.hash}
+                </p>
 
-                    <p>
-                      <span className="text-green-400">Hash:</span><br />
-                      {block.hash}
-                    </p>
+              </div>
 
-                    <p>
-                      <span className="text-yellow-400">Prev Hash:</span><br />
-                      {block.previousHash}
-                    </p>
+              {/* PREVIOUS HASH */}
+              <div className="mb-5">
 
-                    {block.merkleRoot && (
-                      <p>
-                        <span className="text-purple-400">Merkle Root:</span><br />
-                        {block.merkleRoot}
-                      </p>
-                    )}
+                <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">
+                  Previous Hash
+                </h3>
 
-                  </div>
+                <p className="text-yellow-400 break-all text-sm">
+                  {block.previousHash}
+                </p>
+
+              </div>
+
+              {/* MERKLE ROOT */}
+              {block.merkleRoot && (
+
+                <div>
+
+                  <h3 className="text-sm uppercase tracking-wide text-gray-500 mb-2">
+                    Merkle Root
+                  </h3>
+
+                  <p className="text-blue-400 break-all text-sm">
+                    {block.merkleRoot}
+                  </p>
 
                 </div>
-              </div>
-            ))}
 
-          </div>
+              )}
+
+            </div>
+
+          ))
+
         )}
 
       </div>
+
     </div>
   );
 };
